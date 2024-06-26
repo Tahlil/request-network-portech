@@ -1,0 +1,36 @@
+name: release-if-necessary
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  release-if-necessary:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package:
+          - "@requestnetwork/add-stakeholder"
+          - "@requestnetwork/create-invoice-form"
+          - "@requestnetwork/invoice-dashboard"
+          - "@requestnetwork/shared"
+    steps:
+    - name: Checkout repository 🛎️
+      uses: actions/checkout@v4
+    - name: Check if version number has already been released 🕵️‍♀️
+      id: is-release-needed
+      run: npm run is-release-needed --workspace=${{ matrix.package }} --silent >> $GITHUB_OUTPUT
+    - name: Setup .npmrc file to publish to npm 📝
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        registry-url: 'https://registry.npmjs.org'
+    - name: Install dependencies 📥
+      run: npm ci
+    - name: Publish package on NPM 📦
+      if: ${{ steps.is-release-needed.outputs.is-release-needed == 'true' }}
+      run: npm publish --workspace=${{ matrix.package }}
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.REQUEST_BOT_NPM_TOKEN }}
